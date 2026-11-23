@@ -1,0 +1,9 @@
+{
+  "id": "unity-bridge",
+  "name": "Paseo Unity Bridge",
+  "description": "Gives agents working in a Unity project tools that run Unity Pipeline commands in the open Editor over its local HTTP server.",
+  "media": [],
+  "requirements": {
+    "paseo": ">=0.17.3"
+  }
+}
