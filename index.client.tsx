@@ -1,6 +1,6 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 import { startLaunchButtons } from "./client/launchButtons";
-import { LaunchUnityComposerItem } from "./client/LaunchUnityComposerItem";
+import { LaunchUnityComposerItem, LaunchUnityNewWorkspaceItem } from "./client/LaunchUnityComposerItem";
 import { UnityStatusBadge } from "./client/UnityStatusBadge";
 import { unityDebugRpc } from "./shared/debugRpc";
 
@@ -15,10 +15,15 @@ export default function contribute(client: PluginClientContext) {
     id: "launch-unity",
     Component: LaunchUnityComposerItem,
   });
+  const removeNewWorkspaceItem = client.addNewWorkspaceItem({
+    id: "launch-unity",
+    Component: LaunchUnityNewWorkspaceItem,
+  });
   const stopLaunchButtons = startLaunchButtons(client);
   client.rpc(unityDebugRpc, { message: "client bundle loaded" }).catch(() => undefined);
   return () => {
     stopLaunchButtons();
+    removeNewWorkspaceItem();
     removeComposerItem();
     removeBadge();
   };

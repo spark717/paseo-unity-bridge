@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PluginComposerItemProps } from "@getpaseo/plugin/client";
+import type { PluginComposerItemProps, PluginNewWorkspaceItemProps } from "@getpaseo/plugin/client";
 import type { ProjectRef } from "@getpaseo/plugin/client";
 import { useComposer, useNewWorkspace, useProject, useProjects, useRpc } from "@getpaseo/plugin/client";
 import { Action } from "@getpaseo/plugin/client/ui";
@@ -24,42 +24,27 @@ const nonProjectPollIntervalMs = 60_000;
 const routePollIntervalMs = 1_000;
 
 /**
- * The "Launch Unity" control in composers that have no agent yet: a new chat in a workspace, and
- * the New workspace screen. Running agents get a composer pill from `launchButtons.ts` instead.
+ * The "Launch Unity" control in a new chat inside a workspace, which has no agent yet. Running
+ * agents get a composer pill from `launchButtons.ts`; the New workspace screen gets
+ * `LaunchUnityNewWorkspaceItem`.
  */
 export function LaunchUnityComposerItem(_props: PluginComposerItemProps) {
   const composer = useComposer();
   const route = useRoute();
   useDebug("composer item: context=" + composer.context + " route=" + JSON.stringify(route));
-
-  // The New workspace screen reports its composer as "agent" (Paseo 0.17.3), so the route decides.
-  if (route?.kind === "new-workspace") {
-    if (route.directory) {
-      return <LaunchAction target={{ directory: route.directory }} />;
-    }
-    return route.projectId ? <ProjectIdLaunch projectId={route.projectId} /> : null;
-  }
-  if (composer.context === "new-workspace") {
-    return <NewWorkspaceLaunch />;
-  }
   if (composer.context === "draft" && route?.kind === "workspace") {
     return <LaunchAction target={{ workspaceId: route.workspaceId }} />;
   }
   return null;
 }
 
-function ProjectIdLaunch({ projectId }: { projectId: string }) {
-  const projectRefs = useProjects();
-  const projectRef = projectRefs.find((ref) => ref.id === projectId) ?? null;
-  return projectRef ? <ProjectLaunch projectRef={projectRef} /> : null;
-}
-
-function NewWorkspaceLaunch() {
+/** The "Launch Unity" control in the New workspace setup, for the project the user picked. */
+export function LaunchUnityNewWorkspaceItem(_props: PluginNewWorkspaceItemProps) {
   const newWorkspace = useNewWorkspace();
   const projectId = newWorkspace.project?.id ?? null;
   const projectRefs = useProjects();
   const projectRef = projectId ? (projectRefs.find((ref) => ref.id === projectId) ?? null) : null;
-  useDebug("new workspace: project=" + JSON.stringify(newWorkspace.project) + " refs=" + JSON.stringify(projectRefs.map((ref) => ref.id)));
+  useDebug("new workspace item: project=" + JSON.stringify(newWorkspace.project) + " found=" + Boolean(projectRef));
   return projectRef ? <ProjectLaunch projectRef={projectRef} /> : null;
 }
 
@@ -96,8 +81,10 @@ function LaunchAction({ target }: { target: LaunchTarget | null }) {
 /** Polls the Editor state for `target`; null until the first answer, and while there is no target. */
 function useEditorState(target: LaunchTarget | null): { state: EditorState | null; refresh: () => Promise<void> } {
   const fetchState = useRpc(unityEditorStateRpc);
-  const [state, setState] = useState<EditorState | null>(null);
   const targetKey = target ? JSON.stringify(target) : null;
+  // The state remembers its target, so a new target never shows the previous target's state.
+  const [stateEntry, setStateEntry] = useState<{ key: string; state: EditorState } | null>(null);
+  const state = stateEntry && stateEntry.key === targetKey ? stateEntry.state : null;
   const latestKey = useRef(targetKey);
   latestKey.current = targetKey;
   const latestState = useRef(state);
@@ -111,7 +98,7 @@ function useEditorState(target: LaunchTarget | null): { state: EditorState | nul
     try {
       const next = await fetchState(JSON.parse(key) as LaunchTarget);
       if (latestKey.current === key) {
-        setState(next);
+        setStateEntry({ key, state: next });
       }
     } catch {
       // The host may be offline; the next poll asks again.
@@ -119,7 +106,6 @@ function useEditorState(target: LaunchTarget | null): { state: EditorState | nul
   }, [fetchState]);
 
   useEffect(() => {
-    setState(null);
     if (!targetKey) {
       return;
     }
@@ -148,9 +134,7 @@ function useEditorState(target: LaunchTarget | null): { state: EditorState | nul
  * route, `/h/<serverId>/workspace/<workspaceId>`. Null outside a workspace screen, and on native
  * clients, which have no URL.
  */
-type AppRoute =
-  | { kind: "workspace"; workspaceId: string }
-  | { kind: "new-workspace"; directory: string | null; projectId: string | null };
+type AppRoute = { kind: "workspace"; workspaceId: string };
 
 function useRoute(): AppRoute | null {
   const [routeKey, setRouteKey] = useState(readRouteKey);
@@ -167,8 +151,7 @@ function readRouteKey(): string {
 }
 
 /**
- * Reads the app route: `/h/<serverId>/workspace/<workspaceId>` for a workspace, and
- * `/new?serverId=…&dir=…&projectId=…` for the New workspace screen.
+ * Reads the app route, `/h/<serverId>/workspace/<workspaceId>`.
  */
 function parseRoute(routeKey: string): AppRoute | null {
   const workspaceId = readRouteWorkspaceId(routeKey);
@@ -176,12 +159,7 @@ function parseRoute(routeKey: string): AppRoute | null {
     return { kind: "workspace", workspaceId };
   }
 
-  const newMatch = /(?:^|\/)new(\?[^#]*)?(?:#|$)/.exec(routeKey);
-  if (!newMatch) {
-    return null;
-  }
-  const params = new URLSearchParams(newMatch[1] ?? "");
-  return { kind: "new-workspace", directory: params.get("dir") || null, projectId: params.get("projectId") || null };
+  return null;
 }
 
 const encodedIdPrefix = "b64_";
