@@ -2,7 +2,6 @@ import type { PluginClientContext } from "@getpaseo/plugin/client";
 import { startLaunchButtons } from "./client/launchButtons";
 import { LaunchUnityComposerItem, LaunchUnityNewWorkspaceItem } from "./client/LaunchUnityComposerItem";
 import { UnityStatusBadge } from "./client/UnityStatusBadge";
-import { unityDebugRpc } from "./shared/debugRpc";
 
 export default function contribute(client: PluginClientContext) {
   const removeBadge = client.addWorkspaceRowBadgeItem({
@@ -20,7 +19,6 @@ export default function contribute(client: PluginClientContext) {
     Component: LaunchUnityNewWorkspaceItem,
   });
   const stopLaunchButtons = startLaunchButtons(client);
-  client.rpc(unityDebugRpc, { message: "client bundle loaded" }).catch(() => undefined);
   return () => {
     stopLaunchButtons();
     removeNewWorkspaceItem();

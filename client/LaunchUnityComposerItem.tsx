@@ -6,15 +6,6 @@ import { Action } from "@getpaseo/plugin/client/ui";
 import type { RpcOutput } from "@getpaseo/plugin";
 import { unityEditorStateRpc, unityLaunchEditorRpc } from "../shared/unityEditorRpc";
 import { describeLaunch } from "./launchPresentation";
-import { unityDebugRpc } from "../shared/debugRpc";
-
-/** Temporary: sends `message` to the plugin log whenever it changes. */
-function useDebug(message: string) {
-  const send = useRpc(unityDebugRpc);
-  useEffect(() => {
-    send({ message }).catch(() => undefined);
-  }, [message, send]);
-}
 
 type EditorState = RpcOutput<typeof unityEditorStateRpc>;
 type LaunchTarget = { workspaceId: string } | { directory: string };
@@ -31,7 +22,6 @@ const routePollIntervalMs = 1_000;
 export function LaunchUnityComposerItem(_props: PluginComposerItemProps) {
   const composer = useComposer();
   const route = useRoute();
-  useDebug("composer item: context=" + composer.context + " route=" + JSON.stringify(route));
   if (composer.context === "draft" && route?.kind === "workspace") {
     return <LaunchAction target={{ workspaceId: route.workspaceId }} />;
   }
@@ -44,19 +34,16 @@ export function LaunchUnityNewWorkspaceItem(_props: PluginNewWorkspaceItemProps)
   const projectId = newWorkspace.project?.id ?? null;
   const projectRefs = useProjects();
   const projectRef = projectId ? (projectRefs.find((ref) => ref.id === projectId) ?? null) : null;
-  useDebug("new workspace item: project=" + JSON.stringify(newWorkspace.project) + " found=" + Boolean(projectRef));
   return projectRef ? <ProjectLaunch projectRef={projectRef} /> : null;
 }
 
 function ProjectLaunch({ projectRef }: { projectRef: ProjectRef }) {
   const rootPath = useProject(projectRef, (project) => project.rootPath);
-  useDebug("project launch: ref=" + JSON.stringify(projectRef) + " rootPath=" + rootPath);
   return <LaunchAction target={rootPath ? { directory: rootPath } : null} />;
 }
 
 function LaunchAction({ target }: { target: LaunchTarget | null }) {
   const { state, refresh } = useEditorState(target);
-  useDebug("launch action: target=" + JSON.stringify(target) + " state=" + JSON.stringify(state));
   const launchEditor = useRpc(unityLaunchEditorRpc);
 
   const presentation = state ? describeLaunch(state) : null;

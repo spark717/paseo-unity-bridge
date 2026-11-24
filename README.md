@@ -24,7 +24,7 @@ After editing the source, run `paseo plugin reload unity-bridge`. Logs: `paseo p
 - `server/pipelineClient.ts` calls `http://127.0.0.1:<port>/api/...` with the bearer token, and retries once on 401.
 - `server/agentTools.ts` defines the six `unity_*` tools. `index.server.ts` attaches them in the `agent.open.before` hook.
 - `server/editorLauncher.ts` decides whether an Editor has the project open (the locked `Temp/UnityLockfile` on Windows, or a live pid in the pipeline descriptor). It finds the Editor matching `ProjectVersion.txt` in Unity Hub's install folders and starts it with `-projectPath`.
-- `client/launchButtons.ts` adds a "Launch Unity" pill to the chat input of each agent in a Unity workspace and hides it while the project is open in an Editor. `client/LaunchUnityComposerItem.tsx` shows the same control in a new chat that has no agent yet; Paseo does not tell composer items their workspace, so it reads the workspace id from the app route (`/h/<host>/workspace/<id>`).
+- `client/launchButtons.ts` adds a "Launch Unity" pill to the chat input of each agent in a Unity workspace and hides it while the project is open in an Editor. `client/LaunchUnityComposerItem.tsx` shows the same control in a new chat that has no agent yet; Paseo does not tell composer items their workspace, so it reads the workspace id from the app route (`/h/<host>/workspace/<id>`). It also adds the control to the New workspace setup row, for the picked project (the New workspace composer does not render composer items).
 - `client/UnityStatusBadge.tsx` polls the `unity-bridge.status` RPC and shows the Editor state on the workspace row.
 
 ## Develop
