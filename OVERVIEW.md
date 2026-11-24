@@ -10,7 +10,7 @@ It works with projects that have the `com.unity.pipeline` package installed. Whe
 
 The tool list mirrors whatever commands the Editor publishes, so new pipeline commands work without updating the plugin. A badge on each Unity workspace row shows the Editor state: ready, busy (importing, compiling or waiting on a dialog), offline or error.
 
-When no Editor has the project open, a **Launch Unity** button appears in the workspace header above the chat. It starts the Unity version from `ProjectSettings/ProjectVersion.txt`, found in Unity Hub's install folders, and hides once the Editor has the project open. If that version is not installed, the button is greyed out and says so.
+When no Editor has the project open, a **Launch Unity** button appears on the chat input, next to the composer controls. It starts the Unity version from `ProjectSettings/ProjectVersion.txt`, found in Unity Hub's install folders, and hides once the Editor has the project open. If that version is not installed, the button is greyed out and says so.
 
 The plugin reads the Editor's port and bearer token from `Library/Pipeline/.unity-pipeline-port` in the project and only connects to `127.0.0.1`. Nothing leaves the machine.
 
