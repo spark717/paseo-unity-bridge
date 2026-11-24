@@ -1,6 +1,7 @@
 import type { PluginButton, PluginButtonRegistration, PluginClientContext } from "@getpaseo/plugin/client";
 import type { RpcOutput } from "@getpaseo/plugin";
 import { unityEditorStateRpc, unityLaunchEditorRpc } from "../shared/unityEditorRpc";
+import { describeLaunch } from "./launchPresentation";
 
 type EditorState = RpcOutput<typeof unityEditorStateRpc>;
 
@@ -204,43 +205,18 @@ export function startLaunchButtons(client: PluginClientContext): () => void {
   };
 }
 
-/** The button for an Editor state, or null when it should not show. */
+/** The pill for an Editor state, or null when it should not show. */
 function describeButton(state: EditorState, onPress: () => Promise<void>): PluginButton | null {
-  const version = state.editorVersion ?? "";
-  const versionSuffix = version ? " " + version : "";
-
-  if (state.state === "launching") {
-    return {
-      title: "Unity" + versionSuffix + " is starting",
-      label: "Launching Unity…",
-      icon: "LoaderCircle",
-      visible: true,
-      disabled: true,
-      behavior: { kind: "action", onPress },
-    };
-  }
-
-  if (state.state !== "stopped") {
+  const presentation = describeLaunch(state);
+  if (!presentation) {
     return null;
   }
-
-  if (!state.editorPath) {
-    return {
-      title: "Unity" + versionSuffix + " is not installed. Install it from Unity Hub.",
-      label: "Unity" + versionSuffix + " not installed",
-      icon: "Box",
-      visible: true,
-      disabled: true,
-      behavior: { kind: "action", onPress },
-    };
-  }
-
   return {
-    title: "Open this project in Unity" + versionSuffix,
-    label: "Launch Unity",
-    icon: "Play",
+    title: presentation.tooltip,
+    label: presentation.label,
+    icon: presentation.icon,
     visible: true,
-    disabled: false,
+    disabled: !presentation.enabled,
     behavior: { kind: "action", onPress },
   };
 }
