@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PluginComposerItemProps } from "@getpaseo/plugin/client";
 import type { ProjectRef } from "@getpaseo/plugin/client";
 import { useComposer, useNewWorkspace, useProject, useProjects, useRpc } from "@getpaseo/plugin/client";
@@ -29,20 +29,29 @@ const routePollIntervalMs = 1_000;
  */
 export function LaunchUnityComposerItem(_props: PluginComposerItemProps) {
   const composer = useComposer();
-  const location = (globalThis as { location?: { href?: string } }).location;
-  useDebug("composer item: context=" + composer.context + " href=" + (location?.href ?? "none"));
-  if (composer.context === "draft") {
-    return <DraftLaunch />;
+  const route = useRoute();
+  useDebug("composer item: context=" + composer.context + " route=" + JSON.stringify(route));
+
+  // The New workspace screen reports its composer as "agent" (Paseo 0.17.3), so the route decides.
+  if (route?.kind === "new-workspace") {
+    if (route.directory) {
+      return <LaunchAction target={{ directory: route.directory }} />;
+    }
+    return route.projectId ? <ProjectIdLaunch projectId={route.projectId} /> : null;
   }
   if (composer.context === "new-workspace") {
     return <NewWorkspaceLaunch />;
   }
+  if (composer.context === "draft" && route?.kind === "workspace") {
+    return <LaunchAction target={{ workspaceId: route.workspaceId }} />;
+  }
   return null;
 }
 
-function DraftLaunch() {
-  const workspaceId = useRouteWorkspaceId();
-  return <LaunchAction target={workspaceId ? { workspaceId } : null} />;
+function ProjectIdLaunch({ projectId }: { projectId: string }) {
+  const projectRefs = useProjects();
+  const projectRef = projectRefs.find((ref) => ref.id === projectId) ?? null;
+  return projectRef ? <ProjectLaunch projectRef={projectRef} /> : null;
 }
 
 function NewWorkspaceLaunch() {
@@ -139,22 +148,46 @@ function useEditorState(target: LaunchTarget | null): { state: EditorState | nul
  * route, `/h/<serverId>/workspace/<workspaceId>`. Null outside a workspace screen, and on native
  * clients, which have no URL.
  */
-function useRouteWorkspaceId(): string | null {
-  const [workspaceId, setWorkspaceId] = useState(readRouteWorkspaceId);
+type AppRoute =
+  | { kind: "workspace"; workspaceId: string }
+  | { kind: "new-workspace"; directory: string | null; projectId: string | null };
+
+function useRoute(): AppRoute | null {
+  const [routeKey, setRouteKey] = useState(readRouteKey);
   useEffect(() => {
-    const timer = setInterval(() => setWorkspaceId(readRouteWorkspaceId()), routePollIntervalMs);
+    const timer = setInterval(() => setRouteKey(readRouteKey()), routePollIntervalMs);
     return () => clearInterval(timer);
   }, []);
-  return workspaceId;
+  return useMemo(() => parseRoute(routeKey), [routeKey]);
+}
+
+function readRouteKey(): string {
+  const location = (globalThis as { location?: { pathname?: string; search?: string; hash?: string } }).location;
+  return (location?.pathname ?? "") + (location?.search ?? "") + (location?.hash ?? "");
+}
+
+/**
+ * Reads the app route: `/h/<serverId>/workspace/<workspaceId>` for a workspace, and
+ * `/new?serverId=…&dir=…&projectId=…` for the New workspace screen.
+ */
+function parseRoute(routeKey: string): AppRoute | null {
+  const workspaceId = readRouteWorkspaceId(routeKey);
+  if (workspaceId) {
+    return { kind: "workspace", workspaceId };
+  }
+
+  const newMatch = /(?:^|\/)new(\?[^#]*)?(?:#|$)/.exec(routeKey);
+  if (!newMatch) {
+    return null;
+  }
+  const params = new URLSearchParams(newMatch[1] ?? "");
+  return { kind: "new-workspace", directory: params.get("dir") || null, projectId: params.get("projectId") || null };
 }
 
 const encodedIdPrefix = "b64_";
 
-function readRouteWorkspaceId(): string | null {
-  const location = (globalThis as { location?: { pathname?: string; hash?: string } }).location;
-  // Match anywhere in the path or hash, in case the app is served under a prefix or hash routing.
-  const route = (location?.pathname ?? "") + " " + (location?.hash ?? "");
-  const match = /\/h\/[^/\s]+\/workspace\/([^/?#\s]+)/.exec(route);
+function readRouteWorkspaceId(route: string): string | null {
+  const match = /\/h\/[^/]+\/workspace\/([^/?#]+)/.exec(route);
   const segment = match?.[1];
   if (!segment) {
     return null;
