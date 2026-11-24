@@ -1,4 +1,5 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
+import { startLaunchButtons } from "./client/launchButtons";
 import { UnityStatusBadge } from "./client/UnityStatusBadge";
 
 export default function contribute(client: PluginClientContext) {
@@ -8,5 +9,9 @@ export default function contribute(client: PluginClientContext) {
     icon: "Box",
     Component: UnityStatusBadge,
   });
-  return removeBadge;
+  const stopLaunchButtons = startLaunchButtons(client);
+  return () => {
+    stopLaunchButtons();
+    removeBadge();
+  };
 }

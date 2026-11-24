@@ -1,11 +1,15 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { createUnityTools } from "./server/agentTools";
 import { findUnityProjectRoot } from "./server/projectLocator";
+import { getUnityEditorState, launchUnityEditor } from "./server/editorLauncher";
 import { getUnityStatus } from "./server/unityStatus";
+import { unityEditorStateRpc, unityLaunchEditorRpc } from "./shared/unityEditorRpc";
 import { unityStatusRpc } from "./shared/unityStatusRpc";
 
 export default function contribute(server: PluginServerContext) {
   server.handle(unityStatusRpc, getUnityStatus);
+  server.handle(unityEditorStateRpc, getUnityEditorState);
+  server.handle(unityLaunchEditorRpc, launchUnityEditor);
 
   const removeOpenHook = server.addHook("agent.open.before", async ({ request }) => {
     if (request.purpose === "history") {

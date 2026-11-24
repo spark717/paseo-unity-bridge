@@ -130,7 +130,7 @@ function resolveHttpPort(descriptor: RawDescriptor): number | null {
   return legacyPort > 0 ? legacyPort : null;
 }
 
-function isProcessAlive(pid: number | undefined): boolean {
+export function isProcessAlive(pid: number | undefined): boolean {
   if (!pid) {
     return true;
   }
