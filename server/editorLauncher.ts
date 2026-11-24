@@ -24,10 +24,10 @@ interface PendingLaunch {
 const pendingLaunches = new Map<string, PendingLaunch>();
 
 export async function getUnityEditorState(
-  { workspaceId }: RpcInput<typeof unityEditorStateRpc>,
+  input: RpcInput<typeof unityEditorStateRpc>,
   context: PluginHandlerContext,
 ): Promise<EditorState> {
-  const projectRoot = await resolveProjectRoot(workspaceId, context);
+  const projectRoot = await resolveProjectRoot(input, context);
   if (!projectRoot) {
     return { state: "no_project", editorVersion: null, editorPath: null };
   }
@@ -35,10 +35,10 @@ export async function getUnityEditorState(
 }
 
 export async function launchUnityEditor(
-  { workspaceId }: RpcInput<typeof unityLaunchEditorRpc>,
+  input: RpcInput<typeof unityLaunchEditorRpc>,
   context: PluginHandlerContext,
 ): Promise<LaunchResult> {
-  const projectRoot = await resolveProjectRoot(workspaceId, context);
+  const projectRoot = await resolveProjectRoot(input, context);
   if (!projectRoot) {
     return { state: "no_project", editorVersion: null, editorPath: null, ok: false, message: "This workspace is not inside a Unity project." };
   }
@@ -76,10 +76,16 @@ export async function launchUnityEditor(
   return { ...current, state: "launching", ok: true, message: null };
 }
 
-async function resolveProjectRoot(workspaceId: string, context: PluginHandlerContext): Promise<string | null> {
-  const workspace = context.paseo.workspaces.ref(workspaceId);
-  await workspace.refresh();
-  return findUnityProjectRoot(workspace.directory);
+async function resolveProjectRoot(
+  { workspaceId, directory }: { workspaceId?: string; directory?: string },
+  context: PluginHandlerContext,
+): Promise<string | null> {
+  if (workspaceId) {
+    const workspace = context.paseo.workspaces.ref(workspaceId);
+    await workspace.refresh();
+    return findUnityProjectRoot(workspace.directory);
+  }
+  return findUnityProjectRoot(directory);
 }
 
 async function describeProject(projectRoot: string): Promise<EditorState> {

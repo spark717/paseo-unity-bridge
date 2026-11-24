@@ -11,6 +11,9 @@ export const unityEditorProcessStates = ["no_project", "running", "launching", "
 
 export type UnityEditorProcessState = (typeof unityEditorProcessStates)[number];
 
+/** A workspace, or a folder for the New workspace screen, where no workspace exists yet. */
+const targetInput = z.object({ workspaceId: z.string().optional(), directory: z.string().optional() });
+
 const editorStateOutput = z.object({
   state: z.enum(unityEditorProcessStates),
   /** `m_EditorVersion` from ProjectSettings/ProjectVersion.txt. */
@@ -21,13 +24,13 @@ const editorStateOutput = z.object({
 
 export const unityEditorStateRpc = defineRpc({
   name: "unity-bridge.editor-state",
-  input: z.object({ workspaceId: z.string() }),
+  input: targetInput,
   output: editorStateOutput,
 });
 
 export const unityLaunchEditorRpc = defineRpc({
   name: "unity-bridge.launch-editor",
-  input: z.object({ workspaceId: z.string() }),
+  input: targetInput,
   output: editorStateOutput.extend({
     ok: z.boolean(),
     message: z.string().nullable(),
